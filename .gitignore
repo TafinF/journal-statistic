@@ -3,3 +3,5 @@ selenium/
 venv/
 0*
 save/
+*.json
+*.html

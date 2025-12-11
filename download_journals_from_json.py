@@ -11,6 +11,7 @@ import time
 import os
 import tempfile
 from datetime import datetime
+import requests
 
 
 def setup_driver():
@@ -57,7 +58,7 @@ def save_json_data(filename, data):
 
 
 def ensure_save_directory():
-    """Создает структуру папок для сохранения HTML файлов"""
+    """Создает структуру папок для сохранения HTML файлов и скриншотов"""
     current_date = datetime.now().strftime("%Y-%m-%d")
     save_dir = os.path.join("save", current_date)
     
@@ -84,6 +85,59 @@ def save_html_to_file(html_content, journal_id, save_dir):
         return None
 
 
+def take_screenshot(driver, journal_id, save_dir):
+    """Создает скриншот страницы без прокрутки"""
+    try:
+        filename = f"{journal_id}.png"
+        filepath = os.path.join(save_dir, filename)
+        driver.save_screenshot(filepath)
+        
+        # Возвращаем относительный путь для JSON
+        relative_path = os.path.join("save", os.path.basename(save_dir), filename)
+        print(f"  ✓ Скриншот сохранен: {filename}")
+        return relative_path
+    except Exception as e:
+        print(f"  ✗ Ошибка при создании скриншота: {e}")
+        return None
+
+
+def get_external_script():
+    """Загружает JavaScript код с GitHub"""
+    script_url = "https://raw.githubusercontent.com/TafinF/Licey24-MySchoolSctiptTM/refs/heads/main/script.js"
+    
+    try:
+        print("Загружаю внешний JavaScript код...")
+        response = requests.get(script_url)
+        response.raise_for_status()
+        script_content = response.text
+        
+        # Добавляем код для проверки выполнения
+        verification_code = """
+        // Маркер выполнения скрипта
+        insertButton();
+        console.log('✅ Внешний скрипт успешно внедрён');
+        """
+        
+        full_script = script_content + "\n" + verification_code
+        print("✓ JavaScript код успешно загружен")
+        return full_script
+    except Exception as e:
+        print(f"✗ Ошибка при загрузке JavaScript кода: {e}")
+        return None
+
+
+def inject_script_to_page(driver, script_content):
+    """Внедряет JavaScript код в текущую страницу"""
+    try:
+        # Внедряем скрипт в страницу
+        driver.execute_script(script_content)
+        print("  ✓ JavaScript код внедрен в страницу")
+        return True
+    except Exception as e:
+        print(f"  ✗ Ошибка при внедрении JavaScript кода: {e}")
+        return False
+
+
 def wait_for_page_load(driver, timeout=15):
     """
     Ожидает загрузки страницы по появлению SVG элементов
@@ -102,10 +156,14 @@ def wait_for_page_load(driver, timeout=15):
         return False
 
 
-def wait_for_manual_authorization(driver, url):
+def wait_for_manual_authorization(driver, url, external_script):
     """Ожидание ручной авторизации на главной странице"""
     print(f"Открываю страницу для авторизации: {url}")
     driver.get(url)
+    
+    # Внедряем скрипт на страницу авторизации
+    if external_script:
+        inject_script_to_page(driver, external_script)
     
     print("Сайт загружен успешно!")
     print("Вы можете выполнить вход вручную...")
@@ -117,10 +175,24 @@ def wait_for_manual_authorization(driver, url):
     print("Авторизация завершена, продолжаю работу...")
 
 
-def wait_for_first_journal(driver, url):
+def wait_for_first_journal(driver, url, external_script, save_dir):
     """Ожидание подтверждения для первого журнала"""
     print(f"Открываю первый журнал: {url}")
     driver.get(url)
+    
+    # Ждем загрузки страницы
+    page_loaded = wait_for_page_load(driver)
+    
+    # Внедряем скрипт на страницу первого журнала
+    if external_script:
+        inject_script_to_page(driver, external_script)
+    
+    # Ждем полсекунды после внедрения скрипта
+    time.sleep(0.5)
+    
+    # Делаем скриншот
+    journal_id = url.split('/')[-1]  # Извлекаем ID журнала из URL
+    screenshot_path = take_screenshot(driver, journal_id, save_dir)
     
     print("Первый журнал загружен!")
     print("Убедитесь, что страница загрузилась корректно...")
@@ -130,7 +202,7 @@ def wait_for_first_journal(driver, url):
     input("Нажмите Enter для продолжения...")
     
     print("Первый журнал подтвержден, продолжаю автоматическую работу...")
-    return driver.page_source
+    return driver.page_source, page_loaded, screenshot_path
 
 
 def find_next_journal_to_process(data):
@@ -143,12 +215,12 @@ def find_next_journal_to_process(data):
     return None, None, None, None
 
 
-def process_journals(driver, data):
+def process_journals(driver, data, external_script):
     """Обработка журналов с продолжением с места остановки"""
     current_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     save_dir = ensure_save_directory()
     
-    print(f"HTML файлы сохраняются в: {save_dir}")
+    print(f"HTML файлы и скриншоты сохраняются в: {save_dir}")
     
     # Находим первый необработанный журнал
     class_idx, journal_idx, class_item, journal = find_next_journal_to_process(data)
@@ -189,15 +261,31 @@ def process_journals(driver, data):
                 if first_journal:
                     # Для первого журнала ждем подтверждения
                     driver.get(target_url)
-                    page_html = wait_for_first_journal(driver, target_url)
+                    
+                    # Ждем загрузки, внедряем скрипт, делаем скриншот и ждем подтверждения
+                    page_html, page_loaded, screenshot_path = wait_for_first_journal(
+                        driver, target_url, external_script, save_dir
+                    )
                     first_journal = False
                     
-                    # После подтверждения проверяем загрузку
-                    page_loaded = wait_for_page_load(driver)
                 else:
                     # Для остальных журналов работаем автоматически
                     driver.get(target_url)
+                    
+                    # Ждем загрузки страницы
                     page_loaded = wait_for_page_load(driver)
+                    
+                    # Внедряем скрипт сразу после загрузки страницы
+                    script_injected = False
+                    if external_script:
+                        script_injected = inject_script_to_page(driver, external_script)
+                    
+                    # Ждем полсекунды после внедрения скрипта
+                    time.sleep(0.5)
+                    
+                    # Делаем скриншот
+                    screenshot_path = take_screenshot(driver, current_journal["ID"], save_dir)
+                    
                     page_html = driver.page_source
                     
                     if page_loaded:
@@ -212,7 +300,9 @@ def process_journals(driver, data):
                     # Создаем запись о сохранении с путем к файлу
                     save_entry = {
                         "date": current_date,
-                        "file": file_path  # Сохраняем путь к файлу вместо HTML
+                        "file": file_path,  # Сохраняем путь к файлу вместо HTML
+                        "script_injected": external_script is not None,  # Отмечаем факт внедрения скрипта
+                        "screenshot": screenshot_path if screenshot_path else None  # Путь к скриншоту
                     }
                     
                     # Добавляем ошибку если страница не загрузилась
@@ -254,12 +344,17 @@ def process_journals(driver, data):
 
 def main():
     # Загружаем данные из исходного JSON файла
-    json_filename = "data.json"
+    json_filename = "save/bd.json"
     data = load_json_data(json_filename)
     
     if not data:
         print("Не удалось загрузить JSON файл")
         return
+    
+    # Загружаем внешний JavaScript код
+    external_script = get_external_script()
+    if not external_script:
+        print("Предупреждение: внешний скрипт не загружен, продолжение без него")
     
     print("Настраиваю драйвер...")
     
@@ -274,11 +369,11 @@ def main():
         if find_next_journal_to_process(data)[0] is not None:
             # Шаг 1: Авторизация на главной странице
             main_url = "https://authedu.mosreg.ru/teacher/study-process/journal/grade/"
-            wait_for_manual_authorization(driver, main_url)
+            wait_for_manual_authorization(driver, main_url, external_script)
         
         # Шаг 2: Обработка журналов с продолжением
         print("Начинаю обработку журналов...")
-        updated_data = process_journals(driver, data)
+        updated_data = process_journals(driver, data, external_script)
         
         print("✓ Все журналы обработаны и сохранены в исходный файл!")
             
