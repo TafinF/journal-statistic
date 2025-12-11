@@ -104,6 +104,8 @@ def take_screenshot(driver, journal_id, save_dir):
 def get_external_script():
     """Загружает JavaScript код с GitHub"""
     script_url = "https://raw.githubusercontent.com/TafinF/Licey24-MySchoolSctiptTM/refs/heads/main/script.js"
+    with open('interceptor.js', 'r', encoding='utf-8') as file:
+        interceptor_code = file.read()
     
     try:
         print("Загружаю внешний JavaScript код...")
@@ -118,7 +120,7 @@ def get_external_script():
         console.log('✅ Внешний скрипт успешно внедрён');
         """
         
-        full_script = script_content + "\n" + verification_code
+        full_script = script_content + "\n" + interceptor_code + "\n" + verification_code 
         print("✓ JavaScript код успешно загружен")
         return full_script
     except Exception as e:
@@ -180,18 +182,28 @@ def wait_for_first_journal(driver, url, external_script, save_dir):
     print(f"Открываю первый журнал: {url}")
     driver.get(url)
     
-    # Ждем загрузки страницы
-    page_loaded = wait_for_page_load(driver)
     
     # Внедряем скрипт на страницу первого журнала
     if external_script:
         inject_script_to_page(driver, external_script)
     
+    # Ждем загрузки страницы
+    page_loaded = wait_for_page_load(driver)
     # Ждем полсекунды после внедрения скрипта
     time.sleep(0.5)
     
-    # Делаем скриншот
     journal_id = url.split('/')[-1]  # Извлекаем ID журнала из URL
+    api_data_json = driver.execute_script("return window.apiMonitor ? window.apiMonitor.getJSON() : 'Monitor not found';")
+    if api_data_json == 'Monitor not found':
+        print("Ошибка: объект window.apiMonitor не найден на странице.")
+    else:
+        parsed_data = json.loads(api_data_json)
+        output_file_path = os.path.join(save_dir, journal_id + "_api.json")
+        
+        with open(output_file_path, 'w', encoding='utf-8') as f:
+            json.dump(parsed_data, f, indent=2, ensure_ascii=False)
+    # Делаем скриншот
+    
     screenshot_path = take_screenshot(driver, journal_id, save_dir)
     
     print("Первый журнал загружен!")
@@ -272,17 +284,26 @@ def process_journals(driver, data, external_script):
                     # Для остальных журналов работаем автоматически
                     driver.get(target_url)
                     
-                    # Ждем загрузки страницы
-                    page_loaded = wait_for_page_load(driver)
                     
                     # Внедряем скрипт сразу после загрузки страницы
                     script_injected = False
                     if external_script:
                         script_injected = inject_script_to_page(driver, external_script)
                     
+                    # Ждем загрузки страницы
+                    page_loaded = wait_for_page_load(driver)
                     # Ждем полсекунды после внедрения скрипта
                     time.sleep(0.5)
-                    
+                    api_data_json = driver.execute_script("return window.apiMonitor ? window.apiMonitor.getJSON() : 'Monitor not found';")
+                    if api_data_json == 'Monitor not found':
+                        print("Ошибка: объект window.apiMonitor не найден на странице.")
+                    else:
+                        parsed_data = json.loads(api_data_json)
+                        output_file_path = os.path.join(save_dir, current_journal["ID"] + "_api.json")
+
+                        with open(output_file_path, 'w', encoding='utf-8') as f:
+                            json.dump(parsed_data, f, indent=2, ensure_ascii=False)
+    # Делаем скриншот
                     # Делаем скриншот
                     screenshot_path = take_screenshot(driver, current_journal["ID"], save_dir)
                     
@@ -344,7 +365,7 @@ def process_journals(driver, data, external_script):
 
 def main():
     # Загружаем данные из исходного JSON файла
-    json_filename = "save/bd.json"
+    json_filename = "classes_data.json"
     data = load_json_data(json_filename)
     
     if not data:
