@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Отчёт о нарушениях</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: #f5f7fa;
+            color: #333;
+            line-height: 1.6;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+        }
+        
+        header {
+            background: linear-gradient(135deg, #4a6fa5 0%, #2c3e50 100%);
+            color: white;
+            padding: 25px 30px;
+        }
+        
+        h1 {
+            font-size: 28px;
+            margin-bottom: 8px;
+        }
+        
+        .report-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 10px;
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        
+        .summary-container {
+            display: flex;
+            gap: 15px;
+        }
+        
+        .violations-summary {
+            background-color: #ffebee;
+            padding: 8px 15px;
+            border-radius: 6px;
+            font-weight: 500;
+            color: #c62828;
+            display: flex;
+            align-items: center;
+        }
+        
+        .journals-summary {
+            background-color: #e3f2fd;
+            padding: 8px 15px;
+            border-radius: 6px;
+            font-weight: 500;
+            color: #1565c0;
+            display: flex;
+            align-items: center;
+        }
+        
+        .summary-count {
+            font-weight: 700;
+            margin-left: 4px;
+            font-size: 15px;
+        }
+        
+        .violations-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .violations-table th {
+            background-color: #f1f5f9;
+            text-align: left;
+            padding: 16px 20px;
+            font-weight: 600;
+            color: #2c3e50;
+            border-bottom: 2px solid #e0e6ed;
+        }
+        
+        .violations-table td {
+            padding: 18px 20px;
+            border-bottom: 1px solid #eef2f7;
+            vertical-align: middle;
+        }
+        
+        .violations-table tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .violations-table tr:hover:not(.processed) {
+            background-color: #f9fbfd;
+        }
+        
+        .row-number-cell {
+            width: 50px;
+            text-align: center;
+            font-weight: 500;
+            color: #64748b;
+            font-size: 14px;
+        }
+        
+        .processed-cell {
+            width: 60px;
+            text-align: center;
+        }
+        
+        .checkbox-container {
+            display: inline-block;
+            position: relative;
+            cursor: pointer;
+        }
+        
+        .checkbox-container input {
+            position: absolute;
+            opacity: 0;
+            cursor: pointer;
+            height: 0;
+            width: 0;
+        }
+        
+        .checkmark {
+            display: block;
+            height: 24px;
+            width: 24px;
+            background-color: #f0f4f8;
+            border-radius: 4px;
+            border: 2px solid #cbd5e1;
+            transition: all 0.2s;
+        }
+        
+        .checkbox-container:hover input ~ .checkmark {
+            background-color: #e2e8f0;
+            border-color: #94a3b8;
+        }
+        
+        .checkbox-container input:checked ~ .checkmark {
+            background-color: #10b981;
+            border-color: #10b981;
+        }
+        
+        .checkmark:after {
+            content: "";
+            position: absolute;
+            display: none;
+        }
+        
+        .checkbox-container input:checked ~ .checkmark:after {
+            display: block;
+        }
+        
+        .checkbox-container .checkmark:after {
+            left: 8px;
+            top: 4px;
+            width: 6px;
+            height: 10px;
+            border: solid white;
+            border-width: 0 2px 2px 0;
+            transform: rotate(45deg);
+        }
+        
+        .journal-name {
+            font-weight: 600;
+            color: #1e293b;
+            font-size: 16px;
+            text-decoration: none;
+            transition: color 0.2s;
+            display: inline-block;
+            margin-bottom: 4px;
+        }
+        
+        .journal-name:hover {
+            color: #4a6fa5;
+            text-decoration: underline;
+        }
+        
+        .journal-id {
+            font-size: 13px;
+            color: #64748b;
+        }
+        
+        .violation-types-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 4px;
+        }
+        
+        .violation-type {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+        
+        /* Самые серьёзные нарушения - красные */
+        .simple_sequence {
+            background-color: #ffebee;
+            color: #c62828;
+            border: 1px solid #ffcdd2;
+        }
+        
+        /* Возможно прерванная - оранжевая */
+        .multiple_grades {
+            background-color: #fff3e0;
+            color: #ef6c00;
+            border: 1px solid #ffe0b2;
+        }
+        
+        /* Прервана См/НВ - жёлтая */
+        .special_values {
+            background-color: #fffde7;
+            color: #f9a825;
+            border: 1px solid #fff9c4;
+        }
+        
+        /* См/НВ и прервана - зелёная (наименее серьёзное) */
+        .combined {
+            background-color: #e8f5e9;
+            color: #2e7d32;
+            border: 1px solid #c8e6c9;
+        }
+        
+        .violation-count {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            background-color: #ef4444;
+            color: white;
+            border-radius: 50%;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        
+        /* Стиль для обработанных строк (серый эффект как раньше) */
+        .violations-table tr.processed {
+            background-color: #f8f9fa;
+            color: #6c757d;
+            opacity: 0.7;
+            text-decoration: line-through;
+            text-decoration-color: #adb5bd;
+        }
+        
+        .violations-table tr.processed .journal-name {
+            color: #6c757d;
+        }
+        
+        .violations-table tr.processed .journal-id {
+            color: #adb5bd;
+        }
+        
+        .violations-table tr.processed .violation-type {
+            opacity: 0.7;
+        }
+        
+        .violations-table tr.processed .violation-count {
+            background-color: #adb5bd;
+        }
+        
+        .violations-table tr.processed .row-number-cell {
+            color: #adb5bd;
+        }
+        
+        footer {
+            padding: 20px 30px;
+            text-align: center;
+            color: #64748b;
+            font-size: 14px;
+            border-top: 1px solid #eef2f7;
+        }
+        
+        .status-info {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f8fafc;
+            border-radius: 8px;
+            font-size: 14px;
+            color: #475569;
+            text-align: center;
+        }
+        
+        @media (max-width: 768px) {
+            .violations-table {
+                display: block;
+                overflow-x: auto;
+            }
+            
+            .violations-table th,
+            .violations-table td {
+                padding: 12px 15px;
+            }
+            
+            header {
+                padding: 20px;
+            }
+            
+            h1 {
+                font-size: 24px;
+            }
+            
+            .violation-type {
+                padding: 4px 8px;
+                font-size: 12px;
+            }
+            
+            .summary-container {
+                flex-direction: column;
+                gap: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Отчёт о нарушениях в журналах по цепям двоек</h1>
+            <div class="report-info">
+                <div>Дата отчёта: <span id="reportDate">{{REPORT_DATE}}</span></div>
+                <div class="summary-container">
+                    <div class="journals-summary">
+                        Журналов: <span class="summary-count" id="totalJournals">{{JOURNALS_COUNT}}</span>
+                    </div>
+                    <div class="violations-summary">
+                        Нарушений: <span class="summary-count" id="totalViolations">{{VIOLATIONS_COUNT}}</span>
+                    </div>
+                </div>
+            </div>
+        </header>
+        
+        <table class="violations-table">
+            <thead>
+                <tr>
+                    <th style="width: 50px;">№</th>
+                    <th style="width: 60px;">Обработано</th>
+                    <th>Журнал</th>
+                    <th>Типы нарушений</th>
+                    <th style="width: 100px;">Нарушений</th>
+                </tr>
+            </thead>
+            <tbody id="violationsTableBody">
+                <!-- Данные будут вставлены через JavaScript -->
+            </tbody>
+        </table>
+        
+        <div class="status-info" id="statusInfo">
+            Загрузка данных...
+        </div>
+        
+        <footer>
+            <p>Автоматический отчёт системы мониторинга. Журналы можно отмечать галочкой после проверки. Галочки хранятся локально на устройстве и не переносятся. Для перехода в журнал нужно нажать на его название.</p>
+        </footer>
+    </div>
+
+    <script>
+        // Введите дату отчёта здесь
+        const reportDate = "{{REPORT_DATE_JS}}";
+        
+        // Ваши данные JSON
+        const reportData = {{REPORT_JSON}};
+        
+        // Сокращённые названия типов нарушений
+        const violationTypes = {
+            "simple_sequence": "Чистая последовательность двоек",
+            "special_values": "Последовательность прервана См или НВ",
+            "multiple_grades": "Возможно прерванная последовательность",
+            "combined": "Возможно прерванная последовательность и содержит См или НВ"
+        };
+        
+        // Краткие названия (для отображения)
+        const shortViolationTypes = {
+            "simple_sequence": "Чистая последовательность",
+            "special_values": "Прервана См/НВ",
+            "multiple_grades": "Возможно прервана",
+            "combined": "См/НВ и прервана"
+        };
+        
+        // Ключ для localStorage
+        const storageKey = `processedJournals_${reportDate}`;
+        
+        // Загружаем состояние обработки журналов из localStorage
+        let processedJournals = {};
+        
+        function loadProcessedJournals() {
+            const stored = localStorage.getItem(storageKey);
+            if (stored) {
+                try {
+                    processedJournals = JSON.parse(stored);
+                } catch (e) {
+                    console.error("Ошибка при чтении из localStorage:", e);
+                    processedJournals = {};
+                }
+            }
+        }
+        
+        // Сохраняем состояние обработки журналов в localStorage
+        function saveProcessedJournals() {
+            try {
+                localStorage.setItem(storageKey, JSON.stringify(processedJournals));
+            } catch (e) {
+                console.error("Ошибка при сохранении в localStorage:", e);
+            }
+        }
+        
+        // Форматируем дату для отображения
+        function formatDate(dateStr) {
+            const date = new Date(dateStr);
+            if (isNaN(date.getTime())) {
+                return dateStr;
+            }
+            return date.toLocaleDateString('ru-RU');
+        }
+        
+        // Создаём ссылку на журнал
+        function createJournalLink(journalId, journalName) {
+            return `${reportData.baseURL}${journalId}`;
+        }
+        
+        // Подсчитываем количество нарушений каждого типа
+        function countViolationTypes(sequenceTwos) {
+            const counts = {};
+            sequenceTwos.forEach(type => {
+                counts[type] = (counts[type] || 0) + 1;
+            });
+            return counts;
+        }
+        
+        // Обновляем состояние галочки для журнала
+        function toggleProcessed(journalId) {
+            if (processedJournals[journalId]) {
+                delete processedJournals[journalId];
+            } else {
+                processedJournals[journalId] = true;
+            }
+            
+            saveProcessedJournals();
+            updateStatusInfo();
+            renderViolationsTable(); // Перерисовываем таблицу для обновления стилей
+        }
+        
+        // Проверяем, обработан ли журнал
+        function isProcessed(journalId) {
+            return processedJournals[journalId] || false;
+        }
+        
+        // Подсчитываем количество обработанных журналов
+        function countProcessedJournals() {
+            return Object.keys(processedJournals).length;
+        }
+        
+        // Обновляем информационное сообщение
+        function updateStatusInfo() {
+            const totalJournals = reportData.journals.length;
+            const processedJournalsCount = countProcessedJournals();
+            const statusElement = document.getElementById('statusInfo');
+            
+            if (processedJournalsCount === totalJournals) {
+                statusElement.innerHTML = `✓ Все журналы отмечены как обработанные (${processedJournalsCount} из ${totalJournals})`;
+                statusElement.style.backgroundColor = '#e8f5e9';
+                statusElement.style.color = '#2e7d32';
+                statusElement.style.border = '1px solid #c8e6c9';
+            } else {
+                statusElement.innerHTML = `Обработано журналов: ${processedJournalsCount} из ${totalJournals}`;
+                statusElement.style.backgroundColor = '#f8fafc';
+                statusElement.style.color = '#475569';
+                statusElement.style.border = 'none';
+            }
+        }
+        
+        // Создаём элемент для типа нарушения
+        function createViolationTypeElement(violationType, count) {
+            const container = document.createElement('div');
+            container.style.display = 'inline-block';
+            container.style.marginRight = '8px';
+            container.style.marginBottom = '4px';
+            
+            const typeElement = document.createElement('span');
+            typeElement.className = `violation-type ${violationType}`;
+            typeElement.title = `${violationTypes[violationType]}${count > 1 ? ` (${count} шт.)` : ''}`;
+            typeElement.textContent = `${shortViolationTypes[violationType]}${count > 1 ? ` (${count})` : ''}`;
+            
+            container.appendChild(typeElement);
+            return container;
+        }
+        
+        // Генерируем строки таблицы с нарушениями
+        function renderViolationsTable() {
+            const tableBody = document.getElementById('violationsTableBody');
+            tableBody.innerHTML = '';
+            
+            // Обновляем общую информацию
+            document.getElementById('reportDate').textContent = formatDate(reportDate);
+            document.getElementById('totalJournals').textContent = reportData.journals.length;
+            document.getElementById('totalViolations').textContent = reportData.violations_found;
+            
+            // Для каждого журнала создаём одну строку
+            reportData.journals.forEach((journal, index) => {
+                const isJournalProcessed = isProcessed(journal.journal_id);
+                const journalLink = createJournalLink(journal.journal_id, journal.journal_name);
+                const violationCounts = countViolationTypes(journal.sequence_twos);
+                
+                const row = document.createElement('tr');
+                
+                // Если журнал обработан, добавляем специальный класс
+                if (isJournalProcessed) {
+                    row.classList.add('processed');
+                }
+                
+                // Колонка с номером строки
+                const numberCell = document.createElement('td');
+                numberCell.className = 'row-number-cell';
+                numberCell.textContent = index + 1;
+                
+                // Колонка с галочкой (для отметки журнала)
+                const processedCell = document.createElement('td');
+                processedCell.className = 'processed-cell';
+                
+                const checkboxContainer = document.createElement('label');
+                checkboxContainer.className = 'checkbox-container';
+                
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.checked = isJournalProcessed;
+                checkbox.onchange = () => {
+                    toggleProcessed(journal.journal_id);
+                };
+                
+                const checkmark = document.createElement('span');
+                checkmark.className = 'checkmark';
+                
+                checkboxContainer.appendChild(checkbox);
+                checkboxContainer.appendChild(checkmark);
+                processedCell.appendChild(checkboxContainer);
+                
+                // Колонка с названием журнала (ссылка)
+                const journalCell = document.createElement('td');
+                const journalLinkElement = document.createElement('a');
+                journalLinkElement.href = journalLink;
+                journalLinkElement.target = "_blank";
+                journalLinkElement.className = 'journal-name';
+                journalLinkElement.textContent = journal.journal_name;
+                
+                const journalIdElement = document.createElement('div');
+                journalIdElement.className = 'journal-id';
+                journalIdElement.textContent = `ID: ${journal.journal_id}`;
+                
+                journalCell.appendChild(journalLinkElement);
+                journalCell.appendChild(journalIdElement);
+                
+                // Колонка с типами нарушений
+                const violationCell = document.createElement('td');
+                const typesContainer = document.createElement('div');
+                typesContainer.className = 'violation-types-container';
+                
+                // Добавляем каждый тип нарушения
+                Object.keys(violationCounts).forEach(violationType => {
+                    const count = violationCounts[violationType];
+                    const typeElement = createViolationTypeElement(violationType, count);
+                    typesContainer.appendChild(typeElement);
+                });
+                
+                violationCell.appendChild(typesContainer);
+                
+                // Колонка с общим количеством нарушений в журнале
+                const countCell = document.createElement('td');
+                countCell.innerHTML = `<span class="violation-count">${journal.violations_count}</span>`;
+                
+                // Добавляем все ячейки в строку
+                row.appendChild(numberCell);
+                row.appendChild(processedCell);
+                row.appendChild(journalCell);
+                row.appendChild(violationCell);
+                row.appendChild(countCell);
+                
+                tableBody.appendChild(row);
+            });
+            
+            updateStatusInfo();
+        }
+        
+        // Инициализация страницы
+        function init() {
+            loadProcessedJournals();
+            renderViolationsTable();
+        }
+        
+        // Запускаем инициализацию при загрузке страницы
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>

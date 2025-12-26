@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Парсер данных классов и предметов</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: #f5f7fa;
+            color: #333;
+            line-height: 1.6;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .container {
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+            padding: 30px;
+            margin-bottom: 30px;
+        }
+        
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #3498db;
+        }
+        
+        h2 {
+            color: #3498db;
+            margin-top: 30px;
+            margin-bottom: 15px;
+        }
+        
+        .input-section, .output-section {
+            margin-bottom: 30px;
+        }
+        
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #2c3e50;
+        }
+        
+        textarea {
+            width: 100%;
+            height: 250px;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 14px;
+            resize: vertical;
+            transition: border-color 0.3s;
+        }
+        
+        textarea:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+        
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 16px;
+            transition: background-color 0.3s, transform 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        button:hover {
+            background-color: #2980b9;
+            transform: translateY(-2px);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        #parseBtn {
+            background-color: #2ecc71;
+        }
+        
+        #parseBtn:hover {
+            background-color: #27ae60;
+        }
+        
+        #downloadBtn {
+            background-color: #e74c3c;
+            display: none;
+        }
+        
+        #downloadBtn:hover {
+            background-color: #c0392b;
+        }
+        
+        #clearBtn {
+            background-color: #95a5a6;
+        }
+        
+        #clearBtn:hover {
+            background-color: #7f8c8d;
+        }
+        
+        #jsonOutput {
+            background-color: #f8f9fa;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+            white-space: pre-wrap;
+            font-family: monospace;
+            font-size: 14px;
+            max-height: 500px;
+            overflow-y: auto;
+            display: none;
+        }
+        
+        .status {
+            margin-top: 15px;
+            padding: 12px 15px;
+            border-radius: 6px;
+            display: none;
+        }
+        
+        .success {
+            background-color: #d5edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        
+        .stats {
+            display: flex;
+            gap: 20px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .stat-box {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            border-left: 4px solid #3498db;
+            flex: 1;
+            min-width: 150px;
+        }
+        
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        
+        .stat-label {
+            font-size: 14px;
+            color: #7f8c8d;
+            margin-top: 5px;
+        }
+        
+        footer {
+            text-align: center;
+            margin-top: 30px;
+            color: #7f8c8d;
+            font-size: 14px;
+            padding-top: 20px;
+            border-top: 1px solid #e0e0e0;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+            
+            .container {
+                padding: 20px;
+            }
+            
+            .button-group {
+                flex-direction: column;
+            }
+            
+            button {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Парсер данных классов и предметов</h1>
+        
+        <div class="input-section">
+            <h2>Входные данные</h2>
+            <p>Вставьте HTML-код элемента в поле ниже (как в приложенном файле):</p>
+            
+            <label for="htmlInput">HTML-код элемента:</label>
+            <textarea id="htmlInput" placeholder="Вставьте HTML-код сюда..."></textarea>
+            
+            <div class="button-group">
+                <button id="parseBtn">
+                    <span>📊</span> Парсить HTML
+                </button>
+                <button id="clearBtn">
+                    <span>🗑️</span> Очистить
+                </button>
+                <button id="downloadBtn">
+                    <span>⬇️</span> Скачать JSON
+                </button>
+            </div>
+            
+            <div id="status" class="status"></div>
+        </div>
+        
+        <div class="output-section">
+            <h2>Результат</h2>
+            
+            <div class="stats" id="stats">
+                <div class="stat-box">
+                    <div class="stat-value" id="classCount">0</div>
+                    <div class="stat-label">Классов</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value" id="subjectCount">0</div>
+                    <div class="stat-label">Предметов</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value" id="parallelCount">0</div>
+                    <div class="stat-label">Параллелей</div>
+                </div>
+            </div>
+            
+            <label for="jsonOutput">Структурированный JSON:</label>
+            <pre id="jsonOutput"></pre>
+        </div>
+    </div>
+    
+    <footer>
+        <p>Создано для парсинга данных классов и предметов из HTML-кода элемента</p>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const htmlInput = document.getElementById('htmlInput');
+            const jsonOutput = document.getElementById('jsonOutput');
+            const parseBtn = document.getElementById('parseBtn');
+            const downloadBtn = document.getElementById('downloadBtn');
+            const clearBtn = document.getElementById('clearBtn');
+            const statusDiv = document.getElementById('status');
+            const classCount = document.getElementById('classCount');
+            const subjectCount = document.getElementById('subjectCount');
+            const parallelCount = document.getElementById('parallelCount');
+            
+            // Функция для отображения статуса
+            function showStatus(message, type = 'info') {
+                statusDiv.textContent = message;
+                statusDiv.className = `status ${type}`;
+                statusDiv.style.display = 'block';
+                
+                // Автоматически скрыть через 5 секунд
+                setTimeout(() => {
+                    if (statusDiv.textContent === message) {
+                        statusDiv.style.display = 'none';
+                    }
+                }, 5000);
+            }
+            
+            // Функция для парсинга HTML
+            function parseHTML() {
+                const html = htmlInput.value.trim();
+                
+                if (!html) {
+                    showStatus('Введите HTML-код для парсинга', 'error');
+                    return;
+                }
+                
+                try {
+                    // Создаем временный контейнер для парсинга HTML
+                    const tempDiv = document.createElement('div');
+                    tempDiv.innerHTML = html;
+                    
+                    // Базовый URL
+                    const baseURL = "https://authedu.mosreg.ru/teacher/study-process/journal/grade/";
+                    
+                    // Находим все карточки классов
+                    const classCards = tempDiv.querySelectorAll('[data-test-component="journalCardRoute"]');
+                    
+                    if (classCards.length === 0) {
+                        showStatus('Не удалось найти данные о классах в HTML', 'error');
+                        return;
+                    }
+                    
+                    const result = {
+                        baseURL: baseURL,
+                        classes: []
+                    };
+                    
+                    let totalSubjects = 0;
+                    const parallels = new Set();
+                    
+                    // Парсим каждый класс
+                    classCards.forEach(card => {
+                        // Название класса
+                        const classNameElement = card.querySelector('.S1UsQhVOrZV2UWrhV1Iv span');
+                        if (!classNameElement) return;
+                        
+                        const className_orig = classNameElement.textContent.trim();
+                        const className = className_orig.replace(" класс", "");
+                        // Находим параллель (если есть)
+                        const parallelSection = card.closest('section[data-test-component^="journalListSection-"]');
+                        if (parallelSection) {
+                            const parallelHeader = parallelSection.querySelector('h6');
+                            if (parallelHeader) {
+                                parallels.add(parallelHeader.textContent.trim());
+                            }
+                        }
+                        
+                        // Находим все предметы для этого класса
+                        const subjectLinks = card.querySelectorAll('a[data-test-component^="journalCardRoute-"]');
+                        const subjects = [];
+                        
+                        subjectLinks.forEach(link => {
+                            const subjectNameElement = link.querySelector('.pn6BPJgprcoctbDs2w0J span');
+                            if (!subjectNameElement) return;
+                            
+                            const subjectName = subjectNameElement.textContent.trim();
+
+                            // Извлекаем ID из href или data-test-component
+                            const href = link.getAttribute('href');
+                            let subjectId = '';
+                            
+                            if (href) {
+                                // Пытаемся извлечь ID из URL
+                                const idMatch = href.match(/\/grade\/(\d+)/);
+                                if (idMatch && idMatch[1]) {
+                                    subjectId = idMatch[1];
+                                }
+                            }
+                            
+                            // Если не удалось извлечь из href, пробуем из data-test-component
+                            if (!subjectId) {
+                                const dataTest = link.getAttribute('data-test-component');
+                                if (dataTest) {
+                                    const idMatch = dataTest.match(/_(\d+)$/);
+                                    if (idMatch && idMatch[1]) {
+                                        subjectId = idMatch[1];
+                                    }
+                                }
+                            }
+                            
+                            if (subjectName && subjectId) {
+                                subjects.push({
+                                    name: subjectName,
+                                    ID: subjectId
+                                });
+                                totalSubjects++;
+                            }
+                        });
+                        
+                        if (className && subjects.length > 0) {
+                            result.classes.push({
+                                name: className,
+                                journals: subjects
+                            });
+                        }
+                    });
+                    
+                    // Обновляем статистику
+                    classCount.textContent = result.classes.length;
+                    subjectCount.textContent = totalSubjects;
+                    parallelCount.textContent = parallels.size;
+                    
+                    // Форматируем JSON для отображения
+                    jsonOutput.textContent = JSON.stringify(result, null, 2);
+                    jsonOutput.style.display = 'block';
+                    downloadBtn.style.display = 'flex';
+                    
+                    showStatus(`Успешно распарсено: ${result.classes.length} классов, ${totalSubjects} предметов, ${parallels.size} параллелей`, 'success');
+                    
+                } catch (error) {
+                    console.error('Ошибка при парсинге HTML:', error);
+                    showStatus(`Ошибка при парсинге: ${error.message}`, 'error');
+                }
+            }
+            
+            // Функция для скачивания JSON
+            function downloadJSON() {
+                const jsonStr = jsonOutput.textContent;
+                
+                if (!jsonStr) {
+                    showStatus('Нет данных для скачивания', 'error');
+                    return;
+                }
+                
+                try {
+                    // Проверяем, что это валидный JSON
+                    JSON.parse(jsonStr);
+                    
+                    const blob = new Blob([jsonStr], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'classes_data.json';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    
+                    showStatus('JSON файл успешно скачан', 'success');
+                } catch (error) {
+                    showStatus('Ошибка при создании файла для скачивания', 'error');
+                }
+            }
+            
+            // Функция для очистки полей
+            function clearFields() {
+                htmlInput.value = '';
+                jsonOutput.textContent = '';
+                jsonOutput.style.display = 'none';
+                downloadBtn.style.display = 'none';
+                statusDiv.style.display = 'none';
+                
+                // Сброс статистики
+                classCount.textContent = '0';
+                subjectCount.textContent = '0';
+                parallelCount.textContent = '0';
+                
+                showStatus('Все поля очищены', 'info');
+            }
+            
+            // Назначаем обработчики событий
+            parseBtn.addEventListener('click', parseHTML);
+            downloadBtn.addEventListener('click', downloadJSON);
+            clearBtn.addEventListener('click', clearFields);
+            
+            // Автоматический парсинг при вставке HTML (опционально)
+            htmlInput.addEventListener('paste', function() {
+                setTimeout(() => {
+                    // Парсим только если поле не пустое и результат еще не показан
+                    if (htmlInput.value.trim() && jsonOutput.style.display === 'none') {
+                        parseHTML();
+                    }
+                }, 500);
+            });
+            
+            // Показываем пример при загрузке
+            const exampleHTML = `<div>Вставьте HTML-код сюда. Пример: <div class="luxo64SuLYGU_cNq7glg" data-test-component="journalCardRoute"><div class="S1UsQhVOrZV2UWrhV1Iv"><span class="DSXOGdoSiFGKohRuaDDx ebIBbAN3ZomwnCMWP167 _ELGiVRWaoZZRQLlT7eO LqxH9tRjFX8eUgojIkc1 E8taxZlPjqlq_tc1djmu">1-А класс</span></div><div class="LK6ph21ODerO9HUFgkvs"><a class="mo3i0By7o2f2M_Erhktw" data-test-component="journalCardRoute-33623629_2298989" href="/teacher/study-process/journal/grade/2298989?logon_source=teacher_study-process_journal_grade"><svg>...</svg><div class="pn6BPJgprcoctbDs2w0J"><span class="DSXOGdoSiFGKohRuaDDx ebIBbAN3ZomwnCMWP167 _ELGiVRWaoZZRQLlT7eO E8taxZlPjqlq_tc1djmu XOLQ67MNIr2weSGtGuZ5">Изобразительное искусство</span></div></a></div></div></div>`;
+            htmlInput.placeholder = exampleHTML;
+            
+            // Инструкция
+            showStatus('Вставьте HTML-код элемента в поле выше и нажмите "Парсить HTML"', 'info');
+        });
+    </script>
+</body>
+</html>

@@ -1,6 +1,10 @@
 import json
 import os
 from bs4 import BeautifulSoup
+import datetime
+
+# Проверяет на цепочки двоек, даёт отчёт в этой же директории. Нужно скормить его генератору отчёта
+
 
 def extract_grades(tr_element):
     """
@@ -243,9 +247,10 @@ def process_journals(json_file_path):
                     print(f"    ✓ Нарушения в журнале {journal_name}: {list(journal_violations)} (количество: {violation_count})")
             
             print(f"\n{'='*50}")
-        
+
+        current_date = datetime.date.today()
+        output_file = f"violations_chain_report_{current_date}.json"
         # Сохраняем результаты в JSON файл
-        output_file = "violations_report.json"
         with open(output_file, 'w', encoding='utf-8') as f:
             json.dump(results, f, ensure_ascii=False, indent=2)
         
